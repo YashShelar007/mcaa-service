@@ -1,2 +1,7 @@
-# mcaa-service
-Model Compression as a Service (MCaaS) for resource-constrained edge devices
+# MCaa Service (MCaaS)
+
+Model Compression as a Service for resource-constrained edge devices.
+
+## Quickstart
+
+_coming soon…_
