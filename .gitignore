@@ -1,0 +1,10 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+override.tf
+override.tf.json
+crash.log
+
+# AWS CLI creds (never check these in!)
+*.tfvars
