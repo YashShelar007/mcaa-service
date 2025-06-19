@@ -115,3 +115,8 @@ data "aws_iam_policy_document" "ui_s3_policy" {
     }
   }
 }
+
+output "ui_distribution_id" {
+  description = "CloudFront Distribution ID for the MCaaS UI"
+  value       = aws_cloudfront_distribution.ui.id
+}
