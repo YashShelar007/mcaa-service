@@ -1,0 +1,25 @@
+# Don’t check in dependencies or build artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Pip package metadata
+*.dist-info/
+*.egg-info/
+
+# Virtual-env or local libs
+bin/
+lib/
+include/
+
+# Lambda bundle
+api.zip
+
+# boto files
+boto3
+botocore
+dateutil
+jmespath
+s3transfer
+urllib3
+six.py

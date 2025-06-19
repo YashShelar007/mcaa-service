@@ -8,3 +8,6 @@ crash.log
 
 # AWS CLI creds (never check these in!)
 *.tfvars
+
+# virtual environment
+venv
