@@ -23,7 +23,7 @@ resource "aws_s3_bucket_ownership_controls" "models" {
   bucket = aws_s3_bucket.models.id
 
   rule {
-    object_ownership = "BucketOwnerPreferred"
+    object_ownership = "BucketOwnerEnforced"
   }
 }
 
