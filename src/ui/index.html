@@ -2,10 +2,272 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>MCaaS UI Test</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>MCaaS Model Compression</title>
+    <script src="https://cdn.tailwindcss.com"></script>
   </head>
-  <body>
-    <h1>Hello MCaaS!</h1>
-    <p>Your static site is working.</p>
+  <body class="bg-gray-100 text-gray-900">
+    <div
+      id="app"
+      class="min-h-screen flex flex-col items-center justify-center p-4"
+    >
+      <!-- ERROR BANNER -->
+      <div
+        id="error-banner"
+        class="hidden mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded max-w-md w-full"
+      >
+        <span id="error-msg"></span>
+        <button
+          onclick="clearError()"
+          class="float-right text-red-700 font-bold"
+        >
+          &times;
+        </button>
+      </div>
+
+      <!-- UPLOAD FORM -->
+      <div
+        id="upload-card"
+        class="bg-white shadow-lg rounded-lg p-6 w-full max-w-md"
+      >
+        <h2 class="text-2xl font-semibold mb-4">Upload & Run</h2>
+        <form id="upload-form" class="space-y-4">
+          <!-- User ID -->
+          <div>
+            <label class="block mb-1 font-medium">User ID</label>
+            <input
+              name="user_id"
+              type="text"
+              required
+              class="w-full border rounded px-3 py-2"
+              value="demo"
+            />
+          </div>
+          <!-- Profile -->
+          <div>
+            <label class="block mb-1 font-medium">Compression Profile</label>
+            <select
+              name="profile"
+              required
+              class="w-full border rounded px-3 py-2"
+            >
+              <option value="balanced">Balanced</option>
+              <option value="high_accuracy">High Accuracy</option>
+              <option value="max_compression">Max Compression</option>
+            </select>
+          </div>
+          <!-- Model File -->
+          <div>
+            <label class="block mb-1 font-medium">Model File</label>
+            <input
+              name="model_file"
+              type="file"
+              accept=".pt,.pth"
+              required
+              class="w-full"
+            />
+          </div>
+          <button
+            type="submit"
+            class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+          >
+            Upload & Run
+          </button>
+        </form>
+      </div>
+
+      <!-- PROGRESS PANEL -->
+      <div
+        id="progress-card"
+        class="hidden bg-white shadow-lg rounded-lg p-6 w-full max-w-md"
+      >
+        <h2 class="text-2xl font-semibold mb-4 flex items-center">
+          <svg
+            class="w-5 h-5 mr-2 animate-spin text-blue-500"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="4"
+              fill="none"
+            />
+            <path
+              class="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+            />
+          </svg>
+          Pipeline Progress
+        </h2>
+        <ul
+          id="stages"
+          class="list-disc pl-5 space-y-1 text-gray-700 mb-4"
+        ></ul>
+        <button
+          id="download-btn"
+          class="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 hidden"
+        >
+          Download Compressed Model
+        </button>
+      </div>
+    </div>
+
+    <script>
+      // ==== Config ====
+      const API_BASE = "https://0xwd1dia23.execute-api.us-west-2.amazonaws.com";
+      const POLL_MS = 3000;
+
+      // ==== State ====
+      let executionArn = localStorage.getItem("mcaa_execArn");
+      let finalKey = localStorage.getItem("mcaa_finalKey");
+
+      // ==== Elements ====
+      const errBanner = document.getElementById("error-banner");
+      const errMsg = document.getElementById("error-msg");
+      const uploadCard = document.getElementById("upload-card");
+      const progressCard = document.getElementById("progress-card");
+      const formEl = document.getElementById("upload-form");
+      const stagesEl = document.getElementById("stages");
+      const dlBtn = document.getElementById("download-btn");
+
+      // ==== Helpers ====
+      function showError(msg) {
+        errMsg.textContent = msg;
+        errBanner.classList.remove("hidden");
+      }
+      function clearError() {
+        errBanner.classList.add("hidden");
+      }
+      function showForm() {
+        uploadCard.classList.remove("hidden");
+        progressCard.classList.add("hidden");
+        dlBtn.classList.add("hidden");
+      }
+      function showProgress() {
+        uploadCard.classList.add("hidden");
+        progressCard.classList.remove("hidden");
+      }
+      function safeFetch(url, opts) {
+        console.log("fetching", url, opts);
+        return fetch(url, opts).then(async (r) => {
+          let bodyText = await r.text();
+          console.log("response", url, r.status, bodyText);
+          let body;
+          try {
+            body = JSON.parse(bodyText);
+          } catch {
+            throw new Error(`Invalid JSON from ${url}: ${bodyText}`);
+          }
+          if (!r.ok) {
+            throw new Error(body.error || `${r.status} ${r.statusText}`);
+          }
+          return body;
+        });
+      }
+
+      function saveState() {
+        localStorage.setItem("mcaa_execArn", executionArn);
+        localStorage.setItem("mcaa_finalKey", finalKey);
+      }
+      function clearState() {
+        executionArn = finalKey = null;
+        localStorage.removeItem("mcaa_execArn");
+        localStorage.removeItem("mcaa_finalKey");
+      }
+
+      // ==== Poll loop ====
+      async function pollStatus() {
+        try {
+          const events = await safeFetch(
+            `${API_BASE}/status?executionArn=${encodeURIComponent(
+              executionArn
+            )}`
+          );
+          stagesEl.innerHTML = "";
+          events
+            .slice()
+            .reverse()
+            .forEach((ev) => {
+              const li = document.createElement("li");
+              li.textContent = `${new Date(
+                ev.timestamp
+              ).toLocaleTimeString()} – ${ev.state}`;
+              stagesEl.appendChild(li);
+            });
+
+          const last = events[0]?.state || "";
+          if (last.startsWith("Evaluate") || last === "Distill") {
+            const { url } = await safeFetch(
+              `${API_BASE}/download?modelKey=${encodeURIComponent(finalKey)}`
+            );
+            dlBtn.onclick = () => window.open(url, "_blank");
+            dlBtn.classList.remove("hidden");
+          } else {
+            setTimeout(pollStatus, POLL_MS);
+          }
+        } catch (err) {
+          showError("Status error: " + err.message);
+          clearState();
+          setTimeout(showForm, 2000);
+        }
+      }
+
+      // ==== On load ====
+      if (executionArn && finalKey) {
+        showProgress();
+        pollStatus();
+      } else {
+        showForm();
+      }
+
+      // ==== Submit handler ====
+      formEl.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        clearError();
+        const data = new FormData(formEl);
+        const user_id = data.get("user_id").trim();
+        const profile = data.get("profile");
+        const file = data.get("model_file");
+
+        try {
+          // 1. presign
+          const pres = await safeFetch(
+            `${API_BASE}/presign?user_id=${user_id}&filename=${encodeURIComponent(
+              file.name
+            )}`
+          );
+          // 2. upload
+          const up = new FormData();
+          Object.entries(pres.fields).forEach(([k, v]) => up.append(k, v));
+          up.append("file", file);
+          await fetch(pres.url, { method: "POST", body: up });
+
+          // 3. start pipeline
+          const sub = await safeFetch(`${API_BASE}/submit`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id, model_s3_key: pres.key, profile }),
+          });
+          executionArn = sub.executionArn;
+
+          // compute finalKey
+          const baseName = pres.key.split("/").pop();
+          finalKey =
+            profile === "balanced"
+              ? `users/${user_id}/${profile}/distilled/${baseName}`
+              : `users/${user_id}/${profile}/quantized/${baseName}`;
+          saveState();
+
+          showProgress();
+          pollStatus();
+        } catch (err) {
+          showError(err.message);
+        }
+      });
+    </script>
   </body>
 </html>
