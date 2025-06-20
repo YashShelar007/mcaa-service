@@ -54,6 +54,19 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "models" {
   }
 }
 
+resource "aws_s3_bucket_cors_configuration" "models" {
+  bucket = aws_s3_bucket.models.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET", "PUT", "POST", "HEAD"]
+    allowed_origins = ["*"]      # ← you can tighten this to your CloudFront URL
+    expose_headers  = ["ETag"]   # so the browser can see the uploaded object’s ETag
+    max_age_seconds = 3000
+  }
+}
+
+
 // DynamoDB table unchanged
 resource "aws_dynamodb_table" "metadata" {
   name         = "mcaa-service-metadata"

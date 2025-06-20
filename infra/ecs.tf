@@ -22,8 +22,8 @@ resource "aws_ecs_task_definition" "worker" {
   family                   = "mcaa-service-${each.key}"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "1024"
-  memory                   = "2048"
+  cpu                      = "2048"
+  memory                   = "4096"
   execution_role_arn       = aws_iam_role.ecs_task.arn
   task_role_arn            = aws_iam_role.ecs_task.arn
 
@@ -32,8 +32,8 @@ resource "aws_ecs_task_definition" "worker" {
       name      = each.key
       image     = "${aws_ecr_repository.worker[each.key].repository_url}:latest"
       essential = true
-      cpu       = 512
-      memory    = 1024
+      cpu       = 2048
+      memory    = 4096
 
       environment = [
         { name = "PROFILE"        , value = "$.profile" },

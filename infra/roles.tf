@@ -44,6 +44,28 @@ data "aws_iam_policy_document" "ecs_task_policy" {
       aws_dynamodb_table.metadata.arn
     ]
   }
+
+  statement {
+    actions = [
+      "ecr:GetAuthorizationToken",
+      "ecr:BatchGetImage",
+      "ecr:GetDownloadUrlForLayer"
+    ]
+    resources = ["*"]
+  }
+
+  # Allow containers to write logs
+  statement {
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents"
+    ]
+    resources = [
+      "arn:aws:logs:us-west-2:839918633714:log-group:/mcaa-service/*",
+      "arn:aws:logs:us-west-2:839918633714:log-group:/mcaa-service/*:*"
+    ]
+  }
 }
 
 // Step Functions execution role
@@ -74,7 +96,33 @@ data "aws_iam_policy_document" "sfn_policy" {
       "ecs:RunTask",
       "iam:PassRole"
     ]
-    resources = ["*"] // later tighten to specific ARNs
+    resources = ["*"]
   }
-  // you can add S3/DynamoDB actions here too if SFN writes directly
+
+  statement {
+    actions = [
+      "events:PutRule",
+      "events:DescribeRule",
+      "events:ListTargetsByRule",
+      "events:PutTargets",
+      "events:RemoveTargets",
+      "events:DeleteRule"
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    actions = [
+      "logs:CreateLogDelivery",
+      "logs:GetLogDelivery",
+      "logs:UpdateLogDelivery",
+      "logs:DeleteLogDelivery",
+      "logs:ListLogDeliveries",
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents"
+    ]
+    resources = ["*"]
+  }
 }
+
