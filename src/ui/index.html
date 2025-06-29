@@ -17,10 +17,7 @@
         class="hidden mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded max-w-md w-full"
       >
         <span id="error-msg"></span>
-        <button
-          onclick="clearError()"
-          class="float-right text-red-700 font-bold"
-        >
+        <button onclick="clearError()" class="float-right font-bold">
           &times;
         </button>
       </div>
@@ -30,36 +27,153 @@
         id="upload-card"
         class="bg-white shadow-lg rounded-lg p-6 w-full max-w-md"
       >
-        <h2 class="text-2xl font-semibold mb-4">Upload & Run</h2>
+        <h2 class="text-2xl font-semibold mb-4">Upload &amp; Run</h2>
         <form id="upload-form" class="space-y-4">
-          <!-- User ID -->
+          <!-- 1) MODE SELECT -->
+          <div>
+            <label class="block mb-1 font-medium">Mode</label>
+            <div class="flex space-x-6">
+              <label class="flex items-center">
+                <input
+                  type="radio"
+                  name="mode"
+                  value="preset"
+                  checked
+                  class="form-radio"
+                />
+                <span class="ml-2">Preset</span>
+              </label>
+              <label class="flex items-center">
+                <input
+                  type="radio"
+                  name="mode"
+                  value="custom"
+                  class="form-radio"
+                />
+                <span class="ml-2">Custom</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 2a) PRESET FIELDS -->
+          <div id="preset-fields">
+            <label class="block mb-1 font-medium">Compression Profile</label>
+            <select
+              name="profile"
+              required
+              class="w-full border-gray-300 rounded px-3 py-2 focus:border-blue-500"
+            >
+              <option value="balanced">Balanced (Prune → KD → Quant)</option>
+              <option value="high_accuracy">High Accuracy (KD only)</option>
+              <option value="max_compression">
+                Max Compression (Quant only)
+              </option>
+            </select>
+          </div>
+
+          <!-- 2b) CUSTOM FIELDS -->
+          <div id="custom-fields" class="hidden space-y-4">
+            <!-- Accuracy Drop -->
+            <div>
+              <label class="block mb-1 font-medium">
+                Max Accuracy Drop (%)
+                <small class="text-gray-500">(optional)</small>
+              </label>
+              <input
+                name="acc_tol"
+                type="number"
+                min="0"
+                max="20"
+                step="0.5"
+                placeholder="e.g. 3"
+                class="w-24 border-gray-300 rounded px-2 py-1 focus:border-blue-500"
+              />
+              <span class="ml-2 text-gray-600">%</span>
+            </div>
+
+            <!-- Size % of Original -->
+            <div>
+              <label class="block mb-1 font-medium">
+                Max Size (% of original)
+                <small class="text-gray-500">(optional)</small>
+              </label>
+              <input
+                name="size_pct"
+                id="size-pct-input"
+                type="number"
+                min="10"
+                max="100"
+                step="5"
+                placeholder="50"
+                class="w-24 border-gray-300 rounded px-2 py-1 focus:border-blue-500"
+              />
+              <span id="size-pct-hint" class="ml-2 text-gray-600"></span>
+            </div>
+
+            <!-- Bit-Width -->
+            <div>
+              <label class="block mb-1 font-medium">
+                Quant Bit-Width <small class="text-gray-500">(optional)</small>
+              </label>
+              <div class="flex space-x-4">
+                <label class="flex items-center">
+                  <input
+                    type="radio"
+                    name="bitwidth"
+                    value=""
+                    checked
+                    class="form-radio"
+                  />
+                  <span class="ml-1">None</span>
+                </label>
+                <label class="flex items-center">
+                  <input
+                    type="radio"
+                    name="bitwidth"
+                    value="8"
+                    class="form-radio"
+                  />
+                  <span class="ml-1">8-bit</span>
+                </label>
+                <label class="flex items-center">
+                  <input
+                    type="radio"
+                    name="bitwidth"
+                    value="16"
+                    class="form-radio"
+                  />
+                  <span class="ml-1">16-bit</span>
+                </label>
+                <label class="flex items-center">
+                  <input
+                    type="radio"
+                    name="bitwidth"
+                    value="32"
+                    class="form-radio"
+                  />
+                  <span class="ml-1">32-bit</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3) USER ID -->
           <div>
             <label class="block mb-1 font-medium">User ID</label>
             <input
               name="user_id"
               type="text"
               required
-              class="w-full border rounded px-3 py-2"
+              class="w-full border-gray-300 rounded px-3 py-2 focus:border-blue-500"
               value="demo"
             />
           </div>
-          <!-- Profile -->
-          <div>
-            <label class="block mb-1 font-medium">Compression Profile</label>
-            <select
-              name="profile"
-              required
-              class="w-full border rounded px-3 py-2"
-            >
-              <option value="balanced">Balanced</option>
-              <option value="high_accuracy">High Accuracy</option>
-              <option value="max_compression">Max Compression</option>
-            </select>
-          </div>
-          <!-- Model File -->
+
+          <!-- 4) MODEL FILE & DYNAMIC SIZE HINT -->
           <div>
             <label class="block mb-1 font-medium">Model File</label>
             <input
+              id="model-file-input"
               name="model_file"
               type="file"
               accept=".pt,.pth"
@@ -67,16 +181,18 @@
               class="w-full"
             />
           </div>
+
+          <!-- 5) SUBMIT -->
           <button
             type="submit"
             class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
           >
-            Upload & Run
+            Upload &amp; Run
           </button>
         </form>
       </div>
 
-      <!-- PROGRESS PANEL -->
+      <!-- PROGRESS PANEL (unchanged) -->
       <div
         id="progress-card"
         class="hidden bg-white shadow-lg rounded-lg p-6 w-full max-w-md"
@@ -117,24 +233,29 @@
     </div>
 
     <script>
-      // ==== Config ====
+      // ==== Config =====
       const API_BASE = "https://0xwd1dia23.execute-api.us-west-2.amazonaws.com";
       const POLL_MS = 3000;
 
-      // ==== State ====
+      // ==== State & elems
       let executionArn = localStorage.getItem("mcaa_execArn");
       let finalKey = localStorage.getItem("mcaa_finalKey");
 
-      // ==== Elements ====
-      const errBanner = document.getElementById("error-banner");
-      const errMsg = document.getElementById("error-msg");
-      const uploadCard = document.getElementById("upload-card");
-      const progressCard = document.getElementById("progress-card");
-      const formEl = document.getElementById("upload-form");
-      const stagesEl = document.getElementById("stages");
-      const dlBtn = document.getElementById("download-btn");
+      const errBanner = document.getElementById("error-banner"),
+        errMsg = document.getElementById("error-msg"),
+        uploadCard = document.getElementById("upload-card"),
+        progressCard = document.getElementById("progress-card"),
+        formEl = document.getElementById("upload-form"),
+        stagesEl = document.getElementById("stages"),
+        dlBtn = document.getElementById("download-btn"),
+        modeRadios = formEl.querySelectorAll("input[name=mode]"),
+        presetFields = document.getElementById("preset-fields"),
+        customFields = document.getElementById("custom-fields"),
+        fileInput = document.getElementById("model-file-input"),
+        sizePctInput = document.getElementById("size-pct-input"),
+        sizePctHint = document.getElementById("size-pct-hint");
 
-      // ==== Helpers ====
+      // ==== Helpers =====
       function showError(msg) {
         errMsg.textContent = msg;
         errBanner.classList.remove("hidden");
@@ -151,24 +272,18 @@
         uploadCard.classList.add("hidden");
         progressCard.classList.remove("hidden");
       }
-      function safeFetch(url, opts) {
-        console.log("fetching", url, opts);
-        return fetch(url, opts).then(async (r) => {
-          let bodyText = await r.text();
-          console.log("response", url, r.status, bodyText);
-          let body;
-          try {
-            body = JSON.parse(bodyText);
-          } catch {
-            throw new Error(`Invalid JSON from ${url}: ${bodyText}`);
-          }
-          if (!r.ok) {
-            throw new Error(body.error || `${r.status} ${r.statusText}`);
-          }
-          return body;
-        });
+      async function safeFetch(url, opts) {
+        const r = await fetch(url, opts),
+          txt = await r.text();
+        let b;
+        try {
+          b = JSON.parse(txt);
+        } catch {
+          throw new Error(`Bad JSON from ${url}: ${txt}`);
+        }
+        if (!r.ok) throw new Error(b.error || r.statusText);
+        return b;
       }
-
       function saveState() {
         localStorage.setItem("mcaa_execArn", executionArn);
         localStorage.setItem("mcaa_finalKey", finalKey);
@@ -179,7 +294,29 @@
         localStorage.removeItem("mcaa_finalKey");
       }
 
-      // ==== Poll loop ====
+      // ==== MODE SWITCHING ====
+      modeRadios.forEach((r) =>
+        r.addEventListener("change", () => {
+          if (formEl.mode.value === "custom") {
+            presetFields.classList.add("hidden");
+            customFields.classList.remove("hidden");
+          } else {
+            presetFields.classList.remove("hidden");
+            customFields.classList.add("hidden");
+          }
+        })
+      );
+
+      // ==== DYNAMIC SIZE % HINT ====
+      fileInput.addEventListener("change", () => {
+        const f = fileInput.files[0];
+        if (!f) return (sizePctHint.textContent = "");
+
+        const MiB = (f.size / 1024 ** 2).toFixed(1);
+        sizePctHint.textContent = `(original ${MiB} MiB)`;
+      });
+
+      // ==== POLL LOOP =====
       async function pollStatus() {
         try {
           const events = await safeFetch(
@@ -216,7 +353,7 @@
         }
       }
 
-      // ==== On load ====
+      // ==== ON LOAD =====
       if (executionArn && finalKey) {
         showProgress();
         pollStatus();
@@ -224,42 +361,64 @@
         showForm();
       }
 
-      // ==== Submit handler ====
+      // ==== SUBMIT =====
       formEl.addEventListener("submit", async (e) => {
         e.preventDefault();
         clearError();
-        const data = new FormData(formEl);
-        const user_id = data.get("user_id").trim();
-        const profile = data.get("profile");
-        const file = data.get("model_file");
+
+        const data = new FormData(formEl),
+          user_id = data.get("user_id").trim(),
+          mode = data.get("mode"),
+          profile = mode === "preset" ? data.get("profile") : null,
+          acc_tol =
+            data.get("acc_tol") === "" ? null : parseFloat(data.get("acc_tol")),
+          size_pct =
+            data.get("size_pct") === ""
+              ? null
+              : parseFloat(data.get("size_pct")),
+          bitwidth =
+            data.get("bitwidth") === ""
+              ? null
+              : parseInt(data.get("bitwidth"), 10),
+          file = data.get("model_file");
 
         try {
-          // 1. presign
+          // 1) presign
           const pres = await safeFetch(
             `${API_BASE}/presign?user_id=${user_id}&filename=${encodeURIComponent(
               file.name
             )}`
           );
-          // 2. upload
+
+          // 2) upload
           const up = new FormData();
           Object.entries(pres.fields).forEach(([k, v]) => up.append(k, v));
           up.append("file", file);
           await fetch(pres.url, { method: "POST", body: up });
 
-          // 3. start pipeline
+          // 3) submit full payload
+          const body = {
+            user_id,
+            model_s3_key: pres.key,
+            // either preset or custom
+            profile: mode === "preset" ? profile : null,
+            acc_tol,
+            size_pct,
+            bitwidth,
+          };
           const sub = await safeFetch(`${API_BASE}/submit`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ user_id, model_s3_key: pres.key, profile }),
+            body: JSON.stringify(body),
           });
           executionArn = sub.executionArn;
 
-          // compute finalKey
-          const baseName = pres.key.split("/").pop();
+          // prepare finalKey for download
+          const base = pres.key.split("/").pop();
           finalKey =
             profile === "balanced"
-              ? `users/${user_id}/${profile}/distilled/${baseName}`
-              : `users/${user_id}/${profile}/quantized/${baseName}`;
+              ? `users/${user_id}/balanced/distilled/${base}`
+              : `users/${user_id}/${profile || "custom"}/quantized/${base}`;
           saveState();
 
           showProgress();
