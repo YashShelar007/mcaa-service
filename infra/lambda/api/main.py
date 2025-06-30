@@ -53,6 +53,7 @@ def presign(event):
     }
 
 def submit(event):
+    # 1) parse JSON
     try:
         payload   = json.loads(event.get("body") or "{}")
         user_id   = payload["user_id"]
@@ -61,14 +62,47 @@ def submit(event):
     except Exception as e:
         return _bad(f"Invalid input: {e}")
 
+    # 2) extract & validate optional custom-mode fields
+    def parse_field(name, cast, minval=None, maxval=None):
+        v = payload.get(name)
+        if v is None:
+            return None
+        try:
+            v = cast(v)
+        except:
+            raise ValueError(f"{name} must be a {cast.__name__}")
+        if minval is not None and v < minval:
+            raise ValueError(f"{name} must be ≥ {minval}")
+        if maxval is not None and v > maxval:
+            raise ValueError(f"{name} must be ≤ {maxval}")
+        return v
+
+    try:
+        acc_tol  = parse_field("acc_tol", float, 0.0, 100.0)
+        max_size = parse_field("max_size", float, 0.0, None)
+        bitwidth = parse_field("bitwidth", int, 1, None)
+    except ValueError as ve:
+        return _bad(str(ve))
+
+    # 3) build the SFN input payload
+    exec_input = {
+        "user_id":       user_id,
+        "model_s3_key":  model_key,
+        "profile":       profile,
+    }
+    # only include if the user supplied them
+    if acc_tol is not None:
+        exec_input["acc_tol"] = acc_tol
+    if max_size is not None:
+        exec_input["max_size"] = max_size
+    if bitwidth is not None:
+        exec_input["bitwidth"] = bitwidth
+
+    # 4) start the execution
     try:
         resp = sfn.start_execution(
             stateMachineArn=SM_ARN,
-            input=json.dumps({
-                "user_id":       user_id,
-                "model_s3_key":  model_key,
-                "profile":       profile
-            })
+            input=json.dumps(exec_input),
         )
     except Exception as e:
         return _error(f"Failed to start execution: {e}")
