@@ -19,9 +19,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt boto3
 
 # 5) Copy your updated evaluator script & logger
-COPY modules/compression/quantize.py .
+COPY modules/compression/distill_kd.py .
 COPY modules/compression/logger.py .
 COPY modules/compression/model_loader.py .
 
 # 3) Entrypoint
-ENTRYPOINT ["python", "quantize.py"]
+ENTRYPOINT ["python", "distill_kd.py"]

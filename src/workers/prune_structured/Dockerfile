@@ -16,12 +16,12 @@ RUN pip install --no-cache-dir /opt/pytorch-cifar-models
 
 # 4) install any other Python deps
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt boto3
+RUN pip install --no-cache-dir -r requirements.txt boto3 torch-pruning
 
 # 5) Copy your updated evaluator script & logger
-COPY modules/compression/quantize.py .
+COPY modules/compression/prune_structured.py .
 COPY modules/compression/logger.py .
 COPY modules/compression/model_loader.py .
 
 # 3) Entrypoint
-ENTRYPOINT ["python", "quantize.py"]
+ENTRYPOINT ["python", "prune_structured.py"]

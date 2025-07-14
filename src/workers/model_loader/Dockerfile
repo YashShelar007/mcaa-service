@@ -18,10 +18,8 @@ RUN pip install --no-cache-dir /opt/pytorch-cifar-models
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt boto3
 
-# 5) Copy your updated evaluator script & logger
-COPY modules/compression/quantize.py .
-COPY modules/compression/logger.py .
+# 5) copy your loader + logger
 COPY modules/compression/model_loader.py .
+COPY modules/compression/logger.py .
 
-# 3) Entrypoint
-ENTRYPOINT ["python", "quantize.py"]
+ENTRYPOINT ["python", "model_loader.py"]

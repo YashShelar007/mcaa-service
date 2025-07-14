@@ -3,7 +3,18 @@ set -euo pipefail
 
 AWS_REGION="us-west-2"
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-REPOS=(baseline prune quantize distill evaluator)
+
+# now includes the two new workers
+REPOS=(
+  baseline
+  prune_structured
+  quantize
+  distill_kd
+  evaluate
+  prune_search
+  prune_and_quantize
+  model_loader
+)
 
 for name in "${REPOS[@]}"; do
   REPO_NAME="mcaa-service-${name}"
