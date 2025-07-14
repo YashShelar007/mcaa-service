@@ -126,3 +126,75 @@ data "aws_iam_policy_document" "sfn_policy" {
   }
 }
 
+# ----------------------------------------
+# 1) IAM Role for the API‐Gateway → Lambda
+# ----------------------------------------
+resource "aws_iam_role" "api_lambda" {
+  name = "mcaa-service-api-lambda-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "lambda.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+# ----------------------------------------
+# 2) Attach a policy that lets Lambda:
+#    • write CloudWatch logs
+#    • generate presigned S3 URLs (put/get/list)
+#    • start & inspect Step Functions
+#    • query DynamoDB metadata table
+# ----------------------------------------
+resource "aws_iam_role_policy" "api_lambda_policy" {
+  name = "mcaa-service-api-lambda-policy"
+  role = aws_iam_role.api_lambda.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      # CloudWatch Logs
+      {
+        Effect   = "Allow"
+        Action   = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "*"
+      },
+      # S3: presign upload & download
+      {
+        Effect   = "Allow"
+        Action   = [
+          "s3:PutObject",
+          "s3:GetObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          aws_s3_bucket.models.arn,
+          "${aws_s3_bucket.models.arn}/*"
+        ]
+      },
+      # Step Functions: start executions & read history
+      {
+        Effect = "Allow"
+        Action = [
+          "states:StartExecution",
+          "states:GetExecutionHistory"
+        ]
+        Resource = aws_sfn_state_machine.pipeline.arn
+      },
+      # DynamoDB: query metadata table
+      {
+        Effect   = "Allow"
+        Action   = [
+          "dynamodb:Query",
+          "dynamodb:GetItem"
+        ]
+        Resource = aws_dynamodb_table.metadata.arn
+      }
+    ]
+  })
+}
