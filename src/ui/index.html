@@ -91,23 +91,32 @@
               <span class="ml-2 text-gray-600">%</span>
             </div>
 
-            <!-- Size % of Original -->
+            <!-- Size Limit -->
             <div>
               <label class="block mb-1 font-medium">
-                Max Size (% of original)
+                Max Size
                 <small class="text-gray-500">(optional)</small>
               </label>
-              <input
-                name="size_pct"
-                id="size-pct-input"
-                type="number"
-                min="10"
-                max="100"
-                step="5"
-                placeholder="50"
-                class="w-24 border-gray-300 rounded px-2 py-1 focus:border-blue-500"
-              />
-              <span id="size-pct-hint" class="ml-2 text-gray-600"></span>
+              <div class="flex items-center space-x-2">
+                <input
+                  name="size_limit"
+                  id="size-limit-input"
+                  type="number"
+                  min="1"
+                  step="0.1"
+                  placeholder="e.g. 100"
+                  class="w-24 border-gray-300 rounded px-2 py-1 focus:border-blue-500"
+                />
+                <select
+                  name="size_unit"
+                  id="size-unit-select"
+                  class="border-gray-300 rounded px-2 py-1 focus:border-blue-500"
+                >
+                  <option value="MB">MB</option>
+                  <option value="GB">GB</option>
+                </select>
+              </div>
+              <p id="size-limit-hint" class="ml-1 text-gray-600"></p>
             </div>
 
             <!-- Bit-Width -->
@@ -169,7 +178,7 @@
             />
           </div>
 
-          <!-- 4) MODEL FILE & DYNAMIC SIZE HINT -->
+          <!-- 4) MODEL FILE -->
           <div>
             <label class="block mb-1 font-medium">Model File</label>
             <input
@@ -192,16 +201,13 @@
         </form>
       </div>
 
-      <!-- PROGRESS PANEL (unchanged) -->
+      <!-- PROGRESS PANEL -->
       <div
         id="progress-card"
-        class="hidden bg-white shadow-lg rounded-lg p-6 w-full max-w-md"
+        class="hidden bg-white shadow-lg rounded-lg p-6 w-full max-w-md space-y-6"
       >
-        <h2 class="text-2xl font-semibold mb-4 flex items-center">
-          <svg
-            class="w-5 h-5 mr-2 animate-spin text-blue-500"
-            viewBox="0 0 24 24"
-          >
+        <h2 class="text-2xl font-semibold flex items-center space-x-2">
+          <svg class="w-5 h-5 animate-spin text-blue-500" viewBox="0 0 24 24">
             <circle
               class="opacity-25"
               cx="12"
@@ -217,12 +223,35 @@
               d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
             />
           </svg>
-          Pipeline Progress
+          <span>Pipeline Progress</span>
         </h2>
-        <ul
-          id="stages"
-          class="list-disc pl-5 space-y-1 text-gray-700 mb-4"
-        ></ul>
+
+        <!-- METRICS PANEL -->
+        <div
+          id="metrics-card"
+          class="hidden bg-gray-50 border border-gray-200 rounded-lg p-4"
+        >
+          <h3 class="text-lg font-medium mb-2">Metrics</h3>
+          <ul
+            id="metrics-list"
+            class="list-disc pl-5 text-gray-700 space-y-1"
+          ></ul>
+        </div>
+
+        <!-- PARAMETERS CARD -->
+        <div id="params-card" class="hidden">
+          <h3 class="text-lg font-medium mb-2">Compression Params</h3>
+          <ul
+            id="params-list"
+            class="list-disc pl-5 text-gray-700 space-y-1"
+          ></ul>
+        </div>
+
+        <!-- STAGES LIST (scrollable) -->
+        <div class="overflow-y-auto max-h-56">
+          <ul id="stages" class="list-disc pl-5 space-y-1 text-gray-700"></ul>
+        </div>
+
         <button
           id="download-btn"
           class="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 hidden"
@@ -237,7 +266,7 @@
       const API_BASE = "https://0xwd1dia23.execute-api.us-west-2.amazonaws.com";
       const POLL_MS = 3000;
 
-      // ==== State & elems
+      // ==== State & elems =====
       let executionArn = localStorage.getItem("mcaa_execArn");
       let finalKey = localStorage.getItem("mcaa_finalKey");
 
@@ -248,12 +277,17 @@
         formEl = document.getElementById("upload-form"),
         stagesEl = document.getElementById("stages"),
         dlBtn = document.getElementById("download-btn"),
+        metricsCard = document.getElementById("metrics-card"),
+        metricsList = document.getElementById("metrics-list"),
+        paramsCard = document.getElementById("params-card"),
+        paramsList = document.getElementById("params-list"),
         modeRadios = formEl.querySelectorAll("input[name=mode]"),
         presetFields = document.getElementById("preset-fields"),
         customFields = document.getElementById("custom-fields"),
         fileInput = document.getElementById("model-file-input"),
-        sizePctInput = document.getElementById("size-pct-input"),
-        sizePctHint = document.getElementById("size-pct-hint");
+        sizeLimitInput = document.getElementById("size-limit-input"),
+        sizeUnitSelect = document.getElementById("size-unit-select"),
+        sizeLimitHint = document.getElementById("size-limit-hint");
 
       // ==== Helpers =====
       function showError(msg) {
@@ -307,13 +341,12 @@
         })
       );
 
-      // ==== DYNAMIC SIZE % HINT ====
+      // ==== DYNAMIC SIZE HINT ====
       fileInput.addEventListener("change", () => {
         const f = fileInput.files[0];
-        if (!f) return (sizePctHint.textContent = "");
-
+        if (!f) return (sizeLimitHint.textContent = "");
         const MiB = (f.size / 1024 ** 2).toFixed(1);
-        sizePctHint.textContent = `(original ${MiB} MiB)`;
+        sizeLimitHint.textContent = `(original ${MiB} MiB)`;
       });
 
       // ==== POLL LOOP =====
@@ -324,20 +357,42 @@
               executionArn
             )}`
           );
+
+          // check for failure
+          const lastEvent = events[0] || {};
+          const lastState = lastEvent.state || "";
+          if (lastState === "ExecutionFailed" || lastState.endsWith("Failed")) {
+            showError(`Pipeline failed at: ${lastState}`);
+            clearState();
+            return;
+          }
+
+          // --- render stages ---
           stagesEl.innerHTML = "";
           events
             .slice()
             .reverse()
             .forEach((ev) => {
               const li = document.createElement("li");
-              li.textContent = `${new Date(
-                ev.timestamp
-              ).toLocaleTimeString()} – ${ev.state}`;
+              const ts = new Date(ev.timestamp).toLocaleTimeString();
+              let txt = `${ts} – ${ev.state}`;
+              if (ev.accuracy != null) {
+                const a = Number(ev.accuracy);
+                if (!isNaN(a)) {
+                  txt += ` | Acc: ${a.toFixed(2)}%`;
+                }
+              }
+              if (ev.size_bytes != null) {
+                const s = Number(ev.size_bytes);
+                if (!isNaN(s)) {
+                  txt += ` | Size: ${s.toFixed(1)} MB`;
+                }
+              }
+              li.textContent = txt;
               stagesEl.appendChild(li);
             });
 
-          const last = events[0]?.state || "";
-          if (last.startsWith("Evaluate") || last === "Distill") {
+          if (lastState.startsWith("Evaluate") || lastState === "Evaluate") {
             const { url } = await safeFetch(
               `${API_BASE}/download?modelKey=${encodeURIComponent(finalKey)}`
             );
@@ -372,10 +427,11 @@
           profile = mode === "preset" ? data.get("profile") : null,
           acc_tol =
             data.get("acc_tol") === "" ? null : parseFloat(data.get("acc_tol")),
-          size_pct =
-            data.get("size_pct") === ""
+          size_limit =
+            data.get("size_limit") === ""
               ? null
-              : parseFloat(data.get("size_pct")),
+              : parseFloat(data.get("size_limit")),
+          size_unit = data.get("size_unit"),
           bitwidth =
             data.get("bitwidth") === ""
               ? null
@@ -400,10 +456,10 @@
           const body = {
             user_id,
             model_s3_key: pres.key,
-            // either preset or custom
             profile: mode === "preset" ? profile : null,
             acc_tol,
-            size_pct,
+            size_limit,
+            size_unit,
             bitwidth,
           };
           const sub = await safeFetch(`${API_BASE}/submit`, {
@@ -421,6 +477,27 @@
               : `users/${user_id}/${profile || "custom"}/quantized/${base}`;
           saveState();
 
+          // render chosen parameters
+          const params = {
+            Mode: mode === "preset" ? `Preset – ${profile}` : "Custom",
+            ...(mode === "custom" && acc_tol != null
+              ? { "Max Acc Drop": acc_tol + "%" }
+              : {}),
+            ...(mode === "custom" && size_limit != null
+              ? { "Max Size": `${size_limit} ${size_unit}` }
+              : {}),
+            ...(bitwidth != null ? { "Bit-Width": bitwidth + "-bit" } : {}),
+            "User ID": user_id,
+          };
+          paramsList.innerHTML = "";
+          Object.entries(params).forEach(([k, v]) => {
+            const li = document.createElement("li");
+            li.textContent = `${k}: ${v}`;
+            paramsList.appendChild(li);
+          });
+          paramsCard.classList.remove("hidden");
+
+          // show progress
           showProgress();
           pollStatus();
         } catch (err) {
