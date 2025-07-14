@@ -1,20 +1,25 @@
+#!/usr/bin/env python3
 # logger.py
+
+import os
+import csv
+import subprocess
 import warnings
+from datetime import datetime
+
+# Suppress PyTorch weight-only warning
 warnings.filterwarnings(
     "ignore",
     message="You are using `torch.load` with `weights_only=False`"
 )
 
-import os, csv, subprocess
-from datetime import datetime
-
-LOG_PATH   = "logs/experiment_log.csv"
+LOG_PATH = "logs/experiment_log.csv"
 FIELDNAMES = [
     "timestamp", "git_commit", "script", "step",
     "accuracy", "size_mb", "latency_ms"
 ]
 
-# Ensure logs/ and header exist
+# Ensure logs/ directory and CSV header exist
 os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
 if not os.path.exists(LOG_PATH):
     with open(LOG_PATH, "w", newline="") as f:
@@ -33,14 +38,18 @@ def _get_git_commit():
         return "unknown"
 
 def log(entry: dict):
-    # Fill timestamp & git_commit if missing
+    """
+    Append a row to logs/experiment_log.csv. Fills in timestamp & git_commit if missing.
+    """
+    # Fill defaults
     if "timestamp" not in entry:
-        entry["timestamp"]  = datetime.utcnow().isoformat() + "Z"
+        entry["timestamp"] = datetime.utcnow().isoformat() + "Z"
     if "git_commit" not in entry:
         entry["git_commit"] = _get_git_commit()
 
-    # Only keep known fields
+    # Keep only known fields, in order
     row = {k: entry.get(k, "") for k in FIELDNAMES}
+
     with open(LOG_PATH, "a", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=FIELDNAMES)
         writer.writerow(row)

@@ -9,7 +9,7 @@
 
 Chapter 4 (“Compression Techniques”) demonstrates how MCaaS applies:
 
-1. **Pruning** (`prune.py`)
+1. **Pruning** (`prune_structured.py`)
 
    - Magnitude-based neuron/weight pruning
    - Sparsity schedules configured via `--amount` argument
@@ -53,7 +53,7 @@ pip install -r requirements.txt
 
 ```bash
 # Prune
-python prune.py --input-model demo_resnet18.pth --output-model pruned.pth --amount 0.5
+python prune_structured.py --input-model demo_resnet18.pth --output-model pruned.pth --amount 0.5
 
 # Distill
 python distill.py --teacher baseline.pth --student pruned.pth --output distilled.pth
