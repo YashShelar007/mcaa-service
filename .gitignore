@@ -11,3 +11,9 @@ crash.log
 
 # virtual environment
 venv
+
+# build artefacts
+infra/lambda/api.zip
+__pycache__/
+*.pyc
+logs/
