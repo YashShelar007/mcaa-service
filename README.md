@@ -63,7 +63,7 @@ models/                demo CIFAR-10 checkpoints (about 90 MB)
 
 ## Status
 
-Built in 2025 as a cloud computing and thesis project. Archived; not maintained.
+Built in 2025 as a master's thesis project at Arizona State University. Not actively developed.
 
 ## License
 

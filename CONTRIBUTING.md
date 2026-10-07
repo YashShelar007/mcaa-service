@@ -1,6 +1,6 @@
 # Contributing
 
-This project is archived, so changes are unlikely to be merged. If you fork it:
+This project is not actively developed, so changes are unlikely to be merged. If you fork it:
 
 - Python files compile with `python -m py_compile modules/compression/*.py infra/lambda/api/main.py`.
 - Check the infrastructure with `cd infra && terraform init -backend=false && terraform validate`.
